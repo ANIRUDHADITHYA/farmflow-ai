@@ -1,0 +1,17 @@
+{
+  "name": "FarmFlow AI",
+  "short_name": "FarmFlow",
+  "description": "AI-powered farm management platform",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F8FAF9",
+  "theme_color": "#1B6B4A",
+  "icons": [
+    {
+      "src": "/icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
