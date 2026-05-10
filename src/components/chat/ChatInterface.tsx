@@ -13,7 +13,7 @@ import {
   Mic, MicOff, Camera, Send, Bot, User, ImageIcon, X,
   Stethoscope, Package, FileText, Bell, Sparkles,
   History, Plus, MessageSquare, Trash2, ArrowUp,
-  Paperclip, Leaf,
+  Paperclip, Leaf, Zap, ChevronDown,
 } from 'lucide-react'
 import { ChatMessage, ChatSession, FarmContext } from '@/types'
 import { useVoiceRecorder } from '@/hooks/useVoiceRecorder'
@@ -49,7 +49,7 @@ const intentIcons: Record<string, React.ElementType> = {
 const WELCOME_MESSAGE: ChatMessage = {
   id: 'welcome',
   role: 'assistant',
-  content: "Hello! I'm your FarmFlow AI assistant. I can help you manage your farm operations seamlessly.\n\nHere's what I can do:\n\n🩺 Log treatments & track withdrawal periods\n📦 Manage feed & supply inventory\n📄 Record expenses & invoices\n🔔 Set smart reminders\n\nHow can I help you today?",
+  content: "Hello! I'm your FarmClerk AI assistant. I can help you manage your farm operations seamlessly.\n\nHere's what I can do:\n\n🩺 Log treatments & track withdrawal periods\n📦 Manage feed & supply inventory\n📄 Record expenses & invoices\n🔔 Set smart reminders\n\nHow can I help you today?",
   timestamp: new Date().toISOString(),
   intent: 'general',
 }
@@ -59,6 +59,7 @@ export default function ChatInterface() {
   const [sessions, setSessions] = useState<ChatSession[]>([])
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null)
   const [historyOpen, setHistoryOpen] = useState(false)
+  const [quickActionsOpen, setQuickActionsOpen] = useState(false)
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
@@ -440,7 +441,7 @@ export default function ChatInterface() {
           </div>
 
           <div className="flex-1 min-w-0">
-            <h1 className="text-[17px] font-bold text-white tracking-tight">FarmFlow AI</h1>
+            <h1 className="text-[17px] font-bold text-white tracking-tight">FarmClerk AI</h1>
             <p className="text-[13px] font-medium text-white/50">
               {isLoading ? (
                 <span className="flex items-center gap-1.5 text-emerald-300">
@@ -559,7 +560,7 @@ export default function ChatInterface() {
               <div className={`flex flex-col ${message.role === 'user' ? 'items-end' : 'items-start'} max-w-[80%]`}>
                 {/* Sender name */}
                 <span className="text-[13px] font-medium text-slate-400 mb-1 px-1">
-                  {message.role === 'assistant' ? 'FarmFlow AI' : 'You'}
+                  {message.role === 'assistant' ? 'FarmClerk AI' : 'You'}
                 </span>
 
                 {/* Intent badge */}
@@ -641,7 +642,7 @@ export default function ChatInterface() {
                   <Leaf className="w-4 h-4 text-white" />
                 </div>
                 <div className="flex flex-col items-start">
-                  <span className="text-[11px] font-medium text-slate-400 mb-1 px-1">FarmFlow AI</span>
+                  <span className="text-[11px] font-medium text-slate-400 mb-1 px-1">FarmClerk AI</span>
                   <div className="bg-white rounded-2xl rounded-tl-md px-5 py-3.5 shadow-sm border border-slate-100">
                     <div className="flex items-center gap-1">
                       <div className="typing-dot w-2 h-2 bg-emerald-400 rounded-full" style={{ animationDelay: '0ms' }} />
@@ -656,29 +657,47 @@ export default function ChatInterface() {
         </div>
       </ScrollArea>
 
-      {/* ─── Quick Actions (Welcome state) ─── */}
-      {messages.length <= 1 && !isLoading && (
-        <div className="px-4 pb-4 max-w-2xl mx-auto w-full">
-          <p className="text-[13px] font-semibold text-slate-400 uppercase tracking-wider mb-3 px-1">Quick Actions</p>
-          <div className="grid grid-cols-2 gap-2.5">
-            {quickActions.map((action) => (
-              <button
-                key={action.label}
-                onClick={() => handleQuickAction(action.prompt)}
-                className="group flex flex-col gap-2 p-4 rounded-2xl bg-white border border-slate-100 hover:border-slate-200 hover:shadow-md text-left transition-all duration-300"
-              >
-                <div className={`w-9 h-9 rounded-xl bg-gradient-to-br ${action.color} flex items-center justify-center shadow-sm transition-transform duration-300 group-hover:scale-110`}>
-                  <action.icon className="w-[17px] h-[17px] text-white" />
-                </div>
-                <div>
-                  <span className="text-[14px] font-semibold text-slate-700 block">{action.label}</span>
-                  <span className="text-[12px] text-slate-400">{action.description}</span>
-                </div>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
+      {/* ─── Quick Actions Expandable ─── */}
+      <AnimatePresence>
+        {quickActionsOpen && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.25, ease: [0.25, 0.1, 0.25, 1] }}
+            className="overflow-hidden border-t border-slate-100 bg-white/90 backdrop-blur-xl"
+          >
+            <div className="px-4 py-3 max-w-2xl mx-auto w-full">
+              <div className="flex items-center justify-between mb-2.5">
+                <p className="text-[12px] font-semibold text-slate-400 uppercase tracking-wider">Quick Actions</p>
+                <button
+                  onClick={() => setQuickActionsOpen(false)}
+                  className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+                >
+                  <ChevronDown className="w-4 h-4" />
+                </button>
+              </div>
+              <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+                {quickActions.map((action) => (
+                  <button
+                    key={action.label}
+                    onClick={() => { handleQuickAction(action.prompt); setQuickActionsOpen(false) }}
+                    className="group flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-100 hover:border-slate-200 hover:shadow-sm text-left transition-all duration-200 shrink-0"
+                  >
+                    <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${action.color} flex items-center justify-center shadow-sm`}>
+                      <action.icon className="w-4 h-4 text-white" />
+                    </div>
+                    <div>
+                      <span className="text-[13px] font-semibold text-slate-700 block whitespace-nowrap">{action.label}</span>
+                      <span className="text-[11px] text-slate-400 whitespace-nowrap">{action.description}</span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ─── Image Preview ─── */}
       <AnimatePresence>
@@ -743,12 +762,25 @@ export default function ChatInterface() {
               <Paperclip className="w-[18px] h-[18px]" />
             </button>
 
+            {/* Quick Actions toggle */}
+            <button
+              onClick={() => setQuickActionsOpen(prev => !prev)}
+              className={`shrink-0 p-2 rounded-xl transition-colors ${
+                quickActionsOpen
+                  ? 'text-emerald-600 bg-emerald-50'
+                  : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'
+              }`}
+              title="Quick Actions"
+            >
+              <Zap className="w-[18px] h-[18px]" />
+            </button>
+
             {/* Text input */}
             <input
               ref={inputRef}
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder={isRecording ? 'Recording...' : 'Message FarmFlow AI...'}
+              placeholder={isRecording ? 'Recording...' : 'Message FarmClerk AI...'}
               onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && sendMessage()}
               disabled={isRecording}
               className="flex-1 bg-transparent py-3 text-[15px] text-slate-700 placeholder:text-slate-400 focus:outline-none font-medium"
@@ -778,7 +810,7 @@ export default function ChatInterface() {
           </div>
 
           <p className="text-[12px] text-slate-400 text-center mt-2 font-medium">
-            FarmFlow AI can make mistakes. Verify important information.
+            FarmClerk AI can make mistakes. Verify important information.
           </p>
         </div>
 
