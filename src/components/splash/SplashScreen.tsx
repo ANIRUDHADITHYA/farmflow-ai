@@ -8,8 +8,8 @@ export default function SplashScreen({ onFinish }: { onFinish: () => void }) {
 
   useEffect(() => {
     const enterTimer = setTimeout(() => setPhase('hold'), 100)
-    const exitTimer = setTimeout(() => setPhase('exit'), 2200)
-    const finishTimer = setTimeout(() => onFinish(), 2900)
+    const exitTimer = setTimeout(() => setPhase('exit'), 4300)
+    const finishTimer = setTimeout(() => onFinish(), 5000)
 
     return () => {
       clearTimeout(enterTimer)
@@ -127,9 +127,7 @@ export default function SplashScreen({ onFinish }: { onFinish: () => void }) {
         }`}
       >
         <h1 className="text-4xl sm:text-5xl font-extrabold text-white tracking-tight">
-          Farm<span className="text-transparent bg-clip-text" style={{
-            backgroundImage: 'linear-gradient(135deg, #5FD4A0 0%, #7BC4A5 50%, #E8A838 100%)'
-          }}>Clerk</span>
+          FarmClerk
         </h1>
         <div className="flex items-center justify-center gap-2 mt-3">
           <div className="h-px w-8 bg-gradient-to-r from-transparent to-white/20" />
@@ -138,7 +136,7 @@ export default function SplashScreen({ onFinish }: { onFinish: () => void }) {
           </p>
           <div className="h-px w-8 bg-gradient-to-l from-transparent to-white/20" />
         </div>
-        <p className="mt-3 text-sm text-white/30 italic tracking-wide">
+        <p className="mt-3 text-lg font-bold text-white/50 italic tracking-wide">
           From muddy boots to tidy books.
         </p>
       </div>

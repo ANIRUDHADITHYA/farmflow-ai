@@ -12,7 +12,8 @@ import {
 import {
   Mic, MicOff, Camera, Send, Bot, User, ImageIcon, X,
   Stethoscope, Package, FileText, Bell, Sparkles,
-  History, Plus, MessageSquare, Trash2,
+  History, Plus, MessageSquare, Trash2, ArrowUp,
+  Paperclip, Leaf,
 } from 'lucide-react'
 import { ChatMessage, ChatSession, FarmContext } from '@/types'
 import { useVoiceRecorder } from '@/hooks/useVoiceRecorder'
@@ -23,18 +24,18 @@ import {
 import Image from 'next/image'
 
 const quickActions = [
-  { icon: Stethoscope, label: 'Log Treatment', prompt: 'I treated ', color: 'bg-gradient-to-br from-[#1B6B4A] to-[#2D9B6E]', iconColor: 'text-white' },
-  { icon: Package, label: 'Update Stock', prompt: 'I have ', color: 'bg-gradient-to-br from-[#2D9B6E] to-[#7BC4A5]', iconColor: 'text-white' },
-  { icon: FileText, label: 'Log Invoice', prompt: 'Invoice $', color: 'bg-gradient-to-br from-[#E8A838] to-[#F0C464]', iconColor: 'text-white' },
-  { icon: Bell, label: 'Set Reminder', prompt: 'Remind me to ', color: 'bg-gradient-to-br from-[#4A6B5D] to-[#7BC4A5]', iconColor: 'text-white' },
+  { icon: Stethoscope, label: 'Log Treatment', prompt: 'I treated ', description: 'Record animal care', color: 'from-emerald-500 to-teal-500' },
+  { icon: Package, label: 'Update Stock', prompt: 'I have ', description: 'Manage inventory', color: 'from-cyan-500 to-blue-500' },
+  { icon: FileText, label: 'Log Invoice', prompt: 'Invoice $', description: 'Track expenses', color: 'from-amber-500 to-orange-500' },
+  { icon: Bell, label: 'Set Reminder', prompt: 'Remind me to ', description: 'Never forget tasks', color: 'from-violet-500 to-purple-500' },
 ]
 
-const intentColors: Record<string, string> = {
-  treatment: 'bg-[#E8F5EE] text-[#1B6B4A]',
-  inventory: 'bg-[#E0F5EC] text-[#2D9B6E]',
-  invoice: 'bg-[#FEF7E8] text-[#E8A838]',
-  reminder: 'bg-[#E8F5EE] text-[#4A6B5D]',
-  general: 'bg-[#F1F4F3] text-[#4A6B5D]',
+const intentColors: Record<string, { bg: string; text: string; border: string; icon: string }> = {
+  treatment: { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200', icon: 'text-emerald-500' },
+  inventory: { bg: 'bg-cyan-50', text: 'text-cyan-700', border: 'border-cyan-200', icon: 'text-cyan-500' },
+  invoice: { bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200', icon: 'text-amber-500' },
+  reminder: { bg: 'bg-violet-50', text: 'text-violet-700', border: 'border-violet-200', icon: 'text-violet-500' },
+  general: { bg: 'bg-slate-50', text: 'text-slate-600', border: 'border-slate-200', icon: 'text-slate-400' },
 }
 
 const intentIcons: Record<string, React.ElementType> = {
@@ -48,7 +49,7 @@ const intentIcons: Record<string, React.ElementType> = {
 const WELCOME_MESSAGE: ChatMessage = {
   id: 'welcome',
   role: 'assistant',
-  content: "Hey! I'm your FarmClerk AI assistant. Here's what I can do:\n\n• Log animal treatments & track withdrawal periods\n• Manage feed & supply inventory\n• Record expenses & invoices\n• Set smart reminders\n\nWhat can I help you with today?",
+  content: "Hello! I'm your FarmFlow AI assistant. I can help you manage your farm operations seamlessly.\n\nHere's what I can do:\n\n🩺 Log treatments & track withdrawal periods\n📦 Manage feed & supply inventory\n📄 Record expenses & invoices\n🔔 Set smart reminders\n\nHow can I help you today?",
   timestamp: new Date().toISOString(),
   intent: 'general',
 }
@@ -424,96 +425,90 @@ export default function ChatInterface() {
   }
 
   return (
-    <div className="flex flex-col h-full bg-[#F8FAF9]">
-      {/* Header — Gradient with glass effect */}
-      <div className="relative overflow-hidden">
+    <div className="chat-container flex flex-col h-full bg-gradient-to-b from-white via-slate-50/50 to-slate-50">
+      {/* ─── Header ─── */}
+      <div className="chat-header relative z-10 overflow-hidden">
         <div className="absolute inset-0" style={{ background: 'linear-gradient(135deg, #0F3D2A 0%, #1B6B4A 50%, #2D9B6E 100%)' }} />
-        {/* Subtle mesh overlay */}
         <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse at 80% 20%, rgba(95,212,160,0.15) 0%, transparent 50%)' }} />
-        <div className="relative px-5 py-4 flex items-center gap-3">
+        <div className="relative px-4 py-3.5 flex items-center gap-3">
+          {/* Avatar */}
           <div className="relative">
-            <div className="w-11 h-11 rounded-2xl overflow-hidden ring-2 ring-white/15 shadow-lg">
-              <Image src="/icon.png" alt="FarmClerk AI" width={44} height={44} className="object-cover" />
+            <div className="w-10 h-10 rounded-2xl bg-white/15 backdrop-blur-sm flex items-center justify-center ring-1 ring-white/20 shadow-lg">
+              <Leaf className="w-5 h-5 text-white" />
             </div>
-            {/* Online indicator */}
-            <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-[#5FD4A0] border-2 border-[#1B6B4A]" />
+            <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-400 border-2 border-[#1B6B4A]" />
           </div>
+
           <div className="flex-1 min-w-0">
-            <h1 className="text-[15px] font-bold text-white">FarmClerk AI</h1>
-            <p className="text-[11px] font-semibold text-white/50">
+            <h1 className="text-[17px] font-bold text-white tracking-tight">FarmFlow AI</h1>
+            <p className="text-[13px] font-medium text-white/50">
               {isLoading ? (
-                <span className="flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#5FD4A0] animate-pulse" />
+                <span className="flex items-center gap-1.5 text-emerald-300">
+                  <span className="flex gap-0.5">
+                    <span className="w-1 h-1 rounded-full bg-emerald-300 animate-bounce" />
+                    <span className="w-1 h-1 rounded-full bg-emerald-300 animate-bounce [animation-delay:0.1s]" />
+                    <span className="w-1 h-1 rounded-full bg-emerald-300 animate-bounce [animation-delay:0.2s]" />
+                  </span>
                   Thinking...
                 </span>
-              ) : 'Ready to help'}
+              ) : 'Online • Ready to help'}
             </p>
           </div>
-          <div className="flex items-center gap-1">
-            <Button
-              variant="ghost"
-              size="icon"
+
+          <div className="flex items-center gap-0.5">
+            <button
               onClick={startNewSession}
-              className="text-white/60 hover:text-white hover:bg-white/10 rounded-xl h-9 w-9 transition-all"
+              className="p-2 rounded-xl text-white/60 hover:text-white hover:bg-white/10 transition-all duration-200"
               title="New chat"
             >
-              <Plus className="w-5 h-5" />
-            </Button>
+              <Plus className="w-[18px] h-[18px]" />
+            </button>
+
             <Sheet open={historyOpen} onOpenChange={setHistoryOpen}>
               <SheetTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="text-white/60 hover:text-white hover:bg-white/10 rounded-xl h-9 w-9 transition-all"
+                <button
+                  className="p-2 rounded-xl text-white/60 hover:text-white hover:bg-white/10 transition-all duration-200"
                   title="Chat history"
                 >
-                  <History className="w-5 h-5" />
-                </Button>
+                  <History className="w-[18px] h-[18px]" />
+                </button>
               </SheetTrigger>
-              <SheetContent side="left" className="w-80 p-0 bg-[#F8FAF9]">
-                <SheetHeader className="px-5 py-4 relative overflow-hidden">
-                  <div className="absolute inset-0" style={{ background: 'linear-gradient(135deg, #0F3D2A 0%, #1B6B4A 100%)' }} />
-                  <SheetTitle className="relative text-white text-[15px] font-bold">Chat History</SheetTitle>
+              <SheetContent side="left" className="w-80 p-0 bg-white border-r border-slate-100">
+                <SheetHeader className="px-5 pt-6 pb-4">
+                  <SheetTitle className="text-lg font-semibold text-slate-800">Chat History</SheetTitle>
                 </SheetHeader>
-                <div className="p-3">
+                <div className="px-3">
                   <button
                     onClick={startNewSession}
-                    className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl font-bold text-sm transition-all duration-300 hover:scale-[1.01] active:scale-[0.99]"
-                    style={{
-                      background: 'linear-gradient(135deg, rgba(27,107,74,0.08), rgba(45,155,110,0.04))',
-                      color: '#1B6B4A',
-                    }}
+                    className="w-full flex items-center gap-2.5 px-4 py-3 rounded-xl text-sm font-medium text-emerald-600 bg-emerald-50 hover:bg-emerald-100 transition-colors"
                   >
                     <Plus className="w-4 h-4" />
-                    New Chat
+                    Start New Chat
                   </button>
-                  <ScrollArea className="h-[calc(100vh-180px)] mt-3">
-                    <div className="space-y-1">
+                  <ScrollArea className="h-[calc(100vh-160px)] mt-3">
+                    <div className="space-y-0.5">
                       {sessions.length === 0 && (
-                        <p className="text-xs text-[#8BB8A0] text-center py-8 font-semibold">No previous chats</p>
+                        <div className="text-center py-12">
+                          <MessageSquare className="w-8 h-8 text-slate-200 mx-auto mb-2" />
+                          <p className="text-xs text-slate-400">No previous chats</p>
+                        </div>
                       )}
                       {sessions.map(session => (
                         <div
                           key={session.id}
-                          className={`group flex items-center gap-2 px-4 py-3 rounded-2xl cursor-pointer transition-all duration-200 ${
+                          className={`group flex items-center gap-2 px-3 py-2.5 rounded-xl cursor-pointer transition-all duration-200 ${
                             currentSessionId === session.id
-                              ? 'text-white'
-                              : 'hover:bg-[#E8F5EE] text-[#0F2419]'
+                              ? 'bg-emerald-50 text-emerald-700'
+                              : 'hover:bg-slate-50 text-slate-700'
                           }`}
-                          style={currentSessionId === session.id ? {
-                            background: 'linear-gradient(135deg, #1B6B4A, #2D9B6E)',
-                            boxShadow: '0 4px 16px rgba(27,107,74,0.2)',
-                          } : {}}
                         >
-                          <MessageSquare className="w-4 h-4 shrink-0 opacity-50" />
+                          <MessageSquare className={`w-4 h-4 shrink-0 ${currentSessionId === session.id ? 'text-emerald-500' : 'text-slate-300'}`} />
                           <button
                             onClick={() => loadSession(session)}
                             className="flex-1 min-w-0 text-left"
                           >
-                            <p className="text-sm font-semibold truncate">{session.title}</p>
-                            <p className={`text-[10px] font-semibold ${
-                              currentSessionId === session.id ? 'text-white/50' : 'text-[#8BB8A0]'
-                            }`}>
+                            <p className="text-sm font-medium truncate">{session.title}</p>
+                            <p className="text-[10px] text-slate-400 mt-0.5">
                               {new Date(session.updated_at).toLocaleDateString('en-US', {
                                 month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
                               })}
@@ -521,11 +516,7 @@ export default function ChatInterface() {
                           </button>
                           <button
                             onClick={(e) => { e.stopPropagation(); handleDeleteSession(session.id) }}
-                            className={`opacity-0 group-hover:opacity-100 p-1.5 rounded-lg transition-all ${
-                              currentSessionId === session.id
-                                ? 'hover:bg-white/20 text-white/50'
-                                : 'hover:bg-[#DC3545]/10 text-[#DC3545]/60'
-                            }`}
+                            className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg hover:bg-red-50 text-slate-300 hover:text-red-500 transition-all"
                             title="Delete session"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
@@ -541,78 +532,92 @@ export default function ChatInterface() {
         </div>
       </div>
 
-      {/* Messages */}
-      <ScrollArea className="flex-1 overflow-y-auto premium-scroll" ref={scrollRef}>
-        <div className="px-4 py-5 space-y-5 pb-2">
+      {/* ─── Messages ─── */}
+      <ScrollArea className="flex-1 overflow-y-auto" ref={scrollRef}>
+        <div className="chat-messages px-4 py-6 space-y-6 max-w-2xl mx-auto w-full">
           {messages.map((message, index) => (
             <motion.div
               key={message.id}
-              initial={{ opacity: 0, y: 14, scale: 0.97 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              transition={{ duration: 0.3, delay: index === messages.length - 1 ? 0.1 : 0, ease: [0.4, 0, 0.2, 1] }}
-              className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.35, delay: index === messages.length - 1 ? 0.08 : 0, ease: [0.25, 0.1, 0.25, 1] }}
+              className={`flex gap-3 ${message.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}
             >
-              <div className={`max-w-[82%] ${message.role === 'user' ? 'order-1' : 'order-2'}`}>
+              {/* Avatar */}
+              <div className="shrink-0 mt-1">
+                {message.role === 'assistant' ? (
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center shadow-sm">
+                    <Leaf className="w-4 h-4 text-white" />
+                  </div>
+                ) : (
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-slate-600 to-slate-700 flex items-center justify-center shadow-sm">
+                    <User className="w-4 h-4 text-white" />
+                  </div>
+                )}
+              </div>
+
+              <div className={`flex flex-col ${message.role === 'user' ? 'items-end' : 'items-start'} max-w-[80%]`}>
+                {/* Sender name */}
+                <span className="text-[13px] font-medium text-slate-400 mb-1 px-1">
+                  {message.role === 'assistant' ? 'FarmFlow AI' : 'You'}
+                </span>
+
                 {/* Intent badge */}
                 {message.role === 'assistant' && message.intent && message.intent !== 'general' && message.intent !== 'error' && (
-                  <div className="mb-2 flex items-center gap-1.5">
+                  <div className="mb-1.5 flex items-center gap-1.5">
                     {(() => {
                       const Icon = intentIcons[message.intent] || Sparkles
-                      return <Icon className="w-3 h-3" />
+                      const colors = intentColors[message.intent] || intentColors.general
+                      return (
+                        <span className={`inline-flex items-center gap-1 text-[12px] font-semibold px-2.5 py-0.5 rounded-full border ${colors.bg} ${colors.text} ${colors.border}`}>
+                          <Icon className={`w-3 h-3 ${colors.icon}`} />
+                          {message.intent.charAt(0).toUpperCase() + message.intent.slice(1)}
+                        </span>
+                      )
                     })()}
-                    <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full ${intentColors[message.intent] || intentColors.general}`}>
-                      {message.intent.charAt(0).toUpperCase() + message.intent.slice(1)}
-                    </span>
                   </div>
                 )}
 
+                {/* Message bubble */}
                 <div
-                  className={`rounded-[20px] px-4 py-3 ${
+                  className={`relative rounded-2xl px-4 py-3 ${
                     message.role === 'user'
-                      ? 'rounded-br-md text-white'
-                      : 'rounded-bl-md text-[#0F2419] card-elevated'
+                      ? 'bg-slate-100 text-slate-800 rounded-tr-md'
+                      : 'bg-white text-slate-700 rounded-tl-md shadow-sm border border-slate-100'
                   }`}
-                  style={message.role === 'user' ? {
-                    background: 'linear-gradient(135deg, #1B6B4A 0%, #2D9B6E 100%)',
-                    boxShadow: '0 2px 12px rgba(27,107,74,0.2)',
-                  } : {}}
                 >
                   {/* Attachments */}
                   {message.attachments && message.attachments.length > 0 && (
-                    <div className="mb-2">
+                    <div className="mb-2.5">
                       {message.attachments.map((url, i) => (
                         <img
                           key={i}
                           src={url}
                           alt="Attachment"
-                          className="rounded-2xl max-h-48 object-cover w-full"
+                          className="rounded-xl max-h-48 object-cover w-full"
                         />
                       ))}
                     </div>
                   )}
 
-                  <p className="text-[13px] leading-relaxed whitespace-pre-wrap font-medium">
+                  <p className="text-[18px] leading-[1.75] whitespace-pre-wrap font-normal">
                     {message.content}
-                  </p>
-
-                  <p
-                    className={`text-[10px] mt-2 font-semibold ${
-                      message.role === 'user' ? 'text-white/40' : 'text-[#8BB8A0]'
-                    }`}
-                    suppressHydrationWarning
-                  >
-                    {formatTime(message.timestamp)}
                   </p>
                 </div>
 
+                {/* Timestamp */}
+                <p className="text-[12px] text-slate-400 mt-1 px-1" suppressHydrationWarning>
+                  {formatTime(message.timestamp)}
+                </p>
+
                 {/* Quick replies */}
                 {message.quickReplies && message.quickReplies.length > 0 && (
-                  <div className="mt-2.5 flex flex-wrap gap-1.5">
+                  <div className="mt-2 flex flex-wrap gap-1.5">
                     {message.quickReplies.map((reply, i) => (
                       <button
                         key={i}
                         onClick={() => handleQuickReply(reply)}
-                        className="text-[11px] font-bold bg-[#E8F5EE] text-[#1B6B4A] rounded-full px-3.5 py-1.5 hover:bg-[#D0ECE1] transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
+                        className="text-[13px] font-medium bg-white text-emerald-600 rounded-full px-3.5 py-2 border border-emerald-200 hover:bg-emerald-50 hover:border-emerald-300 transition-all duration-200 shadow-sm"
                       >
                         {reply}
                       </button>
@@ -627,16 +632,22 @@ export default function ChatInterface() {
           <AnimatePresence>
             {isLoading && (
               <motion.div
-                initial={{ opacity: 0, y: 8, scale: 0.95 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                className="flex justify-start"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                className="flex gap-3"
               >
-                <div className="card-elevated rounded-[20px] rounded-bl-md px-5 py-4">
-                  <div className="flex items-center gap-1.5">
-                    <div className="w-2 h-2 bg-[#1B6B4A] rounded-full animate-bounce opacity-60" />
-                    <div className="w-2 h-2 bg-[#2D9B6E] rounded-full animate-bounce [animation-delay:0.15s] opacity-60" />
-                    <div className="w-2 h-2 bg-[#7BC4A5] rounded-full animate-bounce [animation-delay:0.3s] opacity-60" />
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center shadow-sm shrink-0">
+                  <Leaf className="w-4 h-4 text-white" />
+                </div>
+                <div className="flex flex-col items-start">
+                  <span className="text-[11px] font-medium text-slate-400 mb-1 px-1">FarmFlow AI</span>
+                  <div className="bg-white rounded-2xl rounded-tl-md px-5 py-3.5 shadow-sm border border-slate-100">
+                    <div className="flex items-center gap-1">
+                      <div className="typing-dot w-2 h-2 bg-emerald-400 rounded-full" style={{ animationDelay: '0ms' }} />
+                      <div className="typing-dot w-2 h-2 bg-emerald-400 rounded-full" style={{ animationDelay: '150ms' }} />
+                      <div className="typing-dot w-2 h-2 bg-emerald-400 rounded-full" style={{ animationDelay: '300ms' }} />
+                    </div>
                   </div>
                 </div>
               </motion.div>
@@ -645,46 +656,47 @@ export default function ChatInterface() {
         </div>
       </ScrollArea>
 
-      {/* Quick Actions */}
+      {/* ─── Quick Actions (Welcome state) ─── */}
       {messages.length <= 1 && !isLoading && (
-        <div className="px-4 pb-3">
-          <p className="text-[10px] font-bold text-[#8BB8A0] uppercase tracking-[0.15em] mb-2.5 px-1">Quick Actions</p>
-          <div className="grid grid-cols-2 gap-2">
+        <div className="px-4 pb-4 max-w-2xl mx-auto w-full">
+          <p className="text-[13px] font-semibold text-slate-400 uppercase tracking-wider mb-3 px-1">Quick Actions</p>
+          <div className="grid grid-cols-2 gap-2.5">
             {quickActions.map((action) => (
               <button
                 key={action.label}
                 onClick={() => handleQuickAction(action.prompt)}
-                className="flex items-center gap-3 p-3.5 rounded-2xl card-interactive text-left group"
+                className="group flex flex-col gap-2 p-4 rounded-2xl bg-white border border-slate-100 hover:border-slate-200 hover:shadow-md text-left transition-all duration-300"
               >
-                <div className={`w-10 h-10 rounded-xl ${action.color} flex items-center justify-center shrink-0 transition-transform duration-300 group-hover:scale-105`}
-                  style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}
-                >
-                  <action.icon className={`w-[18px] h-[18px] ${action.iconColor}`} />
+                <div className={`w-9 h-9 rounded-xl bg-gradient-to-br ${action.color} flex items-center justify-center shadow-sm transition-transform duration-300 group-hover:scale-110`}>
+                  <action.icon className="w-[17px] h-[17px] text-white" />
                 </div>
-                <span className="text-xs font-bold text-[#0F2419]">{action.label}</span>
+                <div>
+                  <span className="text-[14px] font-semibold text-slate-700 block">{action.label}</span>
+                  <span className="text-[12px] text-slate-400">{action.description}</span>
+                </div>
               </button>
             ))}
           </div>
         </div>
       )}
 
-      {/* Image preview */}
+      {/* ─── Image Preview ─── */}
       <AnimatePresence>
         {imagePreview && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
-            className="px-4 pb-2"
+            className="px-4 pb-2 max-w-2xl mx-auto w-full"
           >
-            <div className="relative inline-block">
-              <img src={imagePreview} alt="Preview" className="h-20 rounded-2xl object-cover" />
+            <div className="relative inline-block bg-white rounded-xl p-1.5 border border-slate-100 shadow-sm">
+              <img src={imagePreview} alt="Preview" className="h-20 rounded-lg object-cover" />
               <button
                 onClick={() => {
                   setImagePreview(null)
                   setPendingAttachment(null)
                 }}
-                className="absolute -top-2 -right-2 w-6 h-6 bg-[#E63946] text-white rounded-full flex items-center justify-center shadow-md"
+                className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center shadow-md hover:bg-red-600 transition-colors"
               >
                 <X className="w-3 h-3" />
               </button>
@@ -693,24 +705,24 @@ export default function ChatInterface() {
         )}
       </AnimatePresence>
 
-      {/* Recording indicator */}
+      {/* ─── Recording Indicator ─── */}
       <AnimatePresence>
         {isRecording && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
-            className="px-4 pb-2"
+            className="px-4 pb-2 max-w-2xl mx-auto w-full"
           >
-            <div className="flex items-center gap-3 bg-[#DC3545]/8 text-[#DC3545] rounded-2xl px-4 py-3 border border-[#DC3545]/15">
+            <div className="flex items-center gap-3 bg-red-50 text-red-600 rounded-2xl px-4 py-3 border border-red-100">
               <div className="relative">
-                <MicOff className="w-5 h-5" />
-                <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-[#DC3545] rounded-full animate-pulse" />
+                <Mic className="w-5 h-5" />
+                <div className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-red-500 rounded-full animate-pulse" />
               </div>
-              <span className="text-sm font-bold">Recording... {formatDuration(duration)}</span>
+              <span className="text-sm font-medium">Recording... {formatDuration(duration)}</span>
               <button
                 onClick={handleVoice}
-                className="ml-auto text-xs bg-[#DC3545] text-white rounded-xl px-3.5 py-1.5 font-bold hover:bg-red-700 transition-colors"
+                className="ml-auto text-xs bg-red-500 text-white rounded-lg px-3 py-1.5 font-medium hover:bg-red-600 transition-colors"
               >
                 Stop & Send
               </button>
@@ -719,61 +731,57 @@ export default function ChatInterface() {
         )}
       </AnimatePresence>
 
-      {/* Input */}
-      <div className="p-4 glass-strong border-t border-white/20">
-        <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={handleFileUpload}
-            className="shrink-0 text-[#8BB8A0] hover:text-[#1B6B4A] hover:bg-[#E8F5EE] rounded-xl h-11 w-11 transition-all"
-          >
-            {imagePreview ? (
-              <ImageIcon className="w-5 h-5 text-[#1B6B4A]" />
-            ) : (
-              <Camera className="w-5 h-5" />
-            )}
-          </Button>
+      {/* ─── Input Area ─── */}
+      <div className="chat-input-area bg-white/80 backdrop-blur-xl border-t border-slate-100 px-4 py-3">
+        <div className="max-w-2xl mx-auto w-full">
+          <div className="flex items-center gap-2 bg-slate-50 rounded-2xl border border-slate-200 focus-within:border-emerald-300 focus-within:ring-2 focus-within:ring-emerald-500/10 transition-all duration-200 pr-1.5">
+            {/* Attachment button */}
+            <button
+              onClick={handleFileUpload}
+              className="shrink-0 p-2.5 ml-1 text-slate-400 hover:text-slate-600 rounded-xl hover:bg-slate-100 transition-colors"
+            >
+              <Paperclip className="w-[18px] h-[18px]" />
+            </button>
 
-          <div className="flex-1 relative">
-            <Input
+            {/* Text input */}
+            <input
               ref={inputRef}
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder={isRecording ? 'Recording...' : 'Type your message...'}
+              placeholder={isRecording ? 'Recording...' : 'Message FarmFlow AI...'}
               onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && sendMessage()}
               disabled={isRecording}
-              className="rounded-2xl pr-4 h-11 bg-[#F1F4F3] border-[#E2E8E5] text-[#0F2419] font-medium placeholder:text-[#8BB8A0] focus:border-[#1B6B4A] focus:ring-[#1B6B4A]/20 transition-all"
+              className="flex-1 bg-transparent py-3 text-[15px] text-slate-700 placeholder:text-slate-400 focus:outline-none font-medium"
             />
+
+            {/* Voice / Send button */}
+            {input.trim() || pendingAttachment ? (
+              <button
+                onClick={() => sendMessage()}
+                disabled={isLoading}
+                className="shrink-0 w-9 h-9 rounded-xl bg-emerald-600 hover:bg-emerald-700 flex items-center justify-center transition-all duration-200 shadow-sm disabled:opacity-50"
+              >
+                <ArrowUp className="w-[18px] h-[18px] text-white" strokeWidth={2.5} />
+              </button>
+            ) : (
+              <button
+                onClick={handleVoice}
+                className={`shrink-0 w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-200 ${
+                  isRecording
+                    ? 'bg-red-500 text-white shadow-sm'
+                    : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'
+                }`}
+              >
+                <Mic className="w-[18px] h-[18px]" />
+              </button>
+            )}
           </div>
 
-          {input.trim() || pendingAttachment ? (
-            <Button
-              onClick={() => sendMessage()}
-              disabled={isLoading}
-              className="shrink-0 rounded-xl h-11 w-11 p-0 transition-all duration-300 hover:scale-105 active:scale-95"
-              style={{
-                background: 'linear-gradient(135deg, #1B6B4A 0%, #2D9B6E 100%)',
-                boxShadow: '0 4px 16px rgba(27,107,74,0.25)',
-              }}
-            >
-              <Send className="w-4 h-4 text-white" />
-            </Button>
-          ) : (
-            <Button
-              variant={isRecording ? 'destructive' : 'ghost'}
-              size="icon"
-              onClick={handleVoice}
-              className={`shrink-0 rounded-xl h-11 w-11 transition-all ${
-                isRecording
-                  ? 'bg-[#DC3545] hover:bg-red-700 text-white'
-                  : 'text-[#8BB8A0] hover:text-[#1B6B4A] hover:bg-[#E8F5EE]'
-              }`}
-            >
-              <Mic className="w-5 h-5" />
-            </Button>
-          )}
+          <p className="text-[12px] text-slate-400 text-center mt-2 font-medium">
+            FarmFlow AI can make mistakes. Verify important information.
+          </p>
         </div>
+
         <input
           ref={fileInputRef}
           type="file"

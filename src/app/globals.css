@@ -383,3 +383,61 @@
   width: 0px;
   background: transparent;
 }
+
+/* ═══════════════════════════════════════════════
+   Chat Interface — Light AI Theme
+   ═══════════════════════════════════════════════ */
+
+/* Typing dots animation */
+@keyframes typing-bounce {
+  0%, 60%, 100% {
+    transform: translateY(0);
+    opacity: 0.4;
+  }
+  30% {
+    transform: translateY(-6px);
+    opacity: 1;
+  }
+}
+
+.typing-dot {
+  animation: typing-bounce 1.4s ease-in-out infinite;
+}
+
+/* Chat message area smooth scroll */
+.chat-messages {
+  scroll-behavior: smooth;
+}
+
+/* Chat container */
+.chat-container {
+  position: relative;
+}
+
+/* Input area subtle top shadow */
+.chat-input-area {
+  position: relative;
+}
+
+.chat-input-area::before {
+  content: '';
+  position: absolute;
+  top: -12px;
+  left: 0;
+  right: 0;
+  height: 12px;
+  background: linear-gradient(to top, rgba(248, 250, 252, 0.8), transparent);
+  pointer-events: none;
+}
+
+/* Chat header soft bottom glow */
+.chat-header::after {
+  content: '';
+  position: absolute;
+  bottom: -8px;
+  left: 0;
+  right: 0;
+  height: 8px;
+  background: linear-gradient(to bottom, rgba(248, 250, 252, 0.6), transparent);
+  pointer-events: none;
+}
