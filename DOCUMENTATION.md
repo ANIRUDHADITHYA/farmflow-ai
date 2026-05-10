@@ -1,6 +1,6 @@
-# FarmFlow AI — Documentation
+# FarmClerk AI — Documentation
 
-FarmFlow AI is a chat-driven farm management app. Instead of filling forms, you talk to an AI assistant in plain English (or voice) and it automatically logs treatments, updates stock, records invoices, sets reminders, and maintains a full activity ledger.
+FarmClerk AI is a chat-driven farm management app. Instead of filling forms, you talk to an AI assistant in plain English (or voice) and it automatically logs treatments, updates stock, records invoices, sets reminders, and maintains a full activity ledger.
 
 ---
 
@@ -51,7 +51,7 @@ The app has 5 tabs accessible from the bottom nav bar:
 
 ## Chat Interface
 
-The chat screen is the primary way to interact with FarmFlow. It includes:
+The chat screen is the primary way to interact with FarmClerk. It includes:
 
 - **Message input** — Type or paste your message
 - **Voice button** (mic icon) — Hold to record, auto-transcribes
@@ -333,7 +333,7 @@ Any message that doesn't match a specific intent is handled as general chat.
 ```
 You:  Hello!
 
-Bot:  Hello! I'm your FarmFlow AI assistant. I can help you with animal
+Bot:  Hello! I'm your FarmClerk AI assistant. I can help you with animal
       treatments, inventory tracking, invoice processing, and setting
       reminders. What would you like to do?
 ```

@@ -14,7 +14,7 @@ import {
   Stethoscope, Package, FileText, Bell, Sparkles,
   History, Plus, MessageSquare, Trash2,
 } from 'lucide-react'
-import { ChatMessage, ChatSession } from '@/types'
+import { ChatMessage, ChatSession, FarmContext } from '@/types'
 import { useVoiceRecorder } from '@/hooks/useVoiceRecorder'
 import {
   getChatSessions, createChatSession, deleteChatSession,
@@ -48,7 +48,7 @@ const intentIcons: Record<string, React.ElementType> = {
 const WELCOME_MESSAGE: ChatMessage = {
   id: 'welcome',
   role: 'assistant',
-  content: "Hey! I'm your FarmFlow AI assistant. Here's what I can do:\n\n• Log animal treatments & track withdrawal periods\n• Manage feed & supply inventory\n• Record expenses & invoices\n• Set smart reminders\n\nWhat can I help you with today?",
+  content: "Hey! I'm your FarmClerk AI assistant. Here's what I can do:\n\n• Log animal treatments & track withdrawal periods\n• Manage feed & supply inventory\n• Record expenses & invoices\n• Set smart reminders\n\nWhat can I help you with today?",
   timestamp: new Date().toISOString(),
   intent: 'general',
 }
@@ -62,15 +62,33 @@ export default function ChatInterface() {
   const [isLoading, setIsLoading] = useState(false)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [pendingAttachment, setPendingAttachment] = useState<string | null>(null)
+  const [pendingConfirmation, setPendingConfirmation] = useState<{
+    intent: string;
+    data: Record<string, unknown>;
+  } | null>(null)
+  const [draftData, setDraftData] = useState<Record<string, unknown>>({})
+  const [draftIntent, setDraftIntent] = useState<string | null>(null)
+  const farmContextRef = useRef<FarmContext | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const { isRecording, startRecording, stopRecording, duration } = useVoiceRecorder()
 
-  // Load sessions on mount
+  // Load sessions and farm context on mount
   useEffect(() => {
     loadSessions()
+    loadFarmContext()
   }, [])
+
+  const loadFarmContext = async () => {
+    try {
+      const res = await fetch('/api/farm-context')
+      const ctx = await res.json()
+      farmContextRef.current = ctx
+    } catch (e) {
+      console.error('Failed to load farm context:', e)
+    }
+  }
 
   const loadSessions = async () => {
     try {
@@ -85,6 +103,9 @@ export default function ChatInterface() {
     setCurrentSessionId(null)
     setMessages([WELCOME_MESSAGE])
     setHistoryOpen(false)
+    setPendingConfirmation(null)
+    setDraftData({})
+    setDraftIntent(null)
   }
 
   const loadSession = async (session: ChatSession) => {
@@ -157,7 +178,6 @@ export default function ChatInterface() {
     setIsLoading(true)
 
     try {
-      // Ensure we have a session (creates one on first message)
       const sessionId = await ensureSession(text)
 
       // Save user message to DB
@@ -167,42 +187,137 @@ export default function ChatInterface() {
         attachments: userMessage.attachments,
       })
 
-      // Build conversation history for AI context (last 20 messages)
-      const history = messages
-        .filter(m => m.id !== 'welcome')
-        .slice(-20)
-        .map(m => ({ role: m.role, content: m.content }))
+      // Check if user is confirming or cancelling a pending action
+      const lowerText = text.toLowerCase().trim()
+      const isConfirm = pendingConfirmation && (
+        lowerText.includes('confirm') || lowerText === 'yes' ||
+        lowerText.includes('save') || lowerText.includes('go ahead') ||
+        lowerText.includes('looks good') || text.startsWith('✅')
+      )
+      const isCancel = pendingConfirmation && (
+        lowerText === 'cancel' || lowerText === 'no' ||
+        lowerText.includes("don't save") || lowerText.includes('stop') ||
+        text.startsWith('❌')
+      )
 
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: text,
-          attachments: pendingAttachment ? [pendingAttachment] : undefined,
-          history,
-        }),
-      })
+      if (isConfirm && pendingConfirmation) {
+        // Send confirmed data to API for DB write
+        const response = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            message: text,
+            confirmed: true,
+            confirmedData: pendingConfirmation,
+          }),
+        })
 
-      const data = await response.json()
+        const data = await response.json()
 
-      const aiMessage: ChatMessage = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: data.message || 'Done!',
-        timestamp: new Date().toISOString(),
-        intent: data.intent,
-        quickReplies: data.follow_up_questions,
+        const aiMessage: ChatMessage = {
+          id: (Date.now() + 1).toString(),
+          role: 'assistant',
+          content: data.message || '✅ Saved successfully!',
+          timestamp: new Date().toISOString(),
+          intent: data.intent,
+          quickReplies: data.follow_up_questions,
+        }
+
+        setMessages(prev => [...prev, aiMessage])
+        setPendingConfirmation(null)
+        setDraftData({})
+        setDraftIntent(null)
+
+        // Refresh farm context after DB write
+        loadFarmContext()
+
+        await saveChatMessage(sessionId, {
+          role: 'assistant',
+          content: aiMessage.content,
+          intent: aiMessage.intent,
+          quick_replies: aiMessage.quickReplies,
+        })
+      } else if (isCancel) {
+        const aiMessage: ChatMessage = {
+          id: (Date.now() + 1).toString(),
+          role: 'assistant',
+          content: 'No problem! The action has been cancelled. Nothing was saved. What else can I help with?',
+          timestamp: new Date().toISOString(),
+          intent: 'general',
+        }
+
+        setMessages(prev => [...prev, aiMessage])
+        setPendingConfirmation(null)
+        setDraftData({})
+        setDraftIntent(null)
+
+        await saveChatMessage(sessionId, {
+          role: 'assistant',
+          content: aiMessage.content,
+          intent: aiMessage.intent,
+        })
+      } else {
+        // Normal message — send to AI with conversation history
+        const history = messages
+          .filter(m => m.id !== 'welcome')
+          .slice(-20)
+          .map(m => ({ role: m.role, content: m.content }))
+
+        const response = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            message: text,
+            attachments: pendingAttachment ? [pendingAttachment] : undefined,
+            history,
+          }),
+        })
+
+        const data = await response.json()
+
+        // Merge draft data for multi-turn conversations
+        if (data.intent && data.intent !== 'general') {
+          const newIntent = data.intent
+          const newData = data.data || {}
+
+          if (draftIntent === newIntent) {
+            // Same intent — merge accumulated data
+            const merged = { ...draftData, ...newData }
+            data.data = merged
+            setDraftData(merged)
+          } else {
+            // New intent — reset draft
+            setDraftData(newData)
+            setDraftIntent(newIntent)
+          }
+        }
+
+        // Check if this is a confirmation request
+        if (data.needs_confirmation) {
+          setPendingConfirmation({
+            intent: data.intent,
+            data: data.data,
+          })
+        }
+
+        const aiMessage: ChatMessage = {
+          id: (Date.now() + 1).toString(),
+          role: 'assistant',
+          content: data.message || 'Done!',
+          timestamp: new Date().toISOString(),
+          intent: data.intent,
+          quickReplies: data.follow_up_questions,
+        }
+
+        setMessages(prev => [...prev, aiMessage])
+
+        await saveChatMessage(sessionId, {
+          role: 'assistant',
+          content: aiMessage.content,
+          intent: aiMessage.intent,
+          quick_replies: aiMessage.quickReplies,
+        })
       }
-
-      setMessages(prev => [...prev, aiMessage])
-
-      // Save assistant message to DB
-      await saveChatMessage(sessionId, {
-        role: 'assistant',
-        content: aiMessage.content,
-        intent: aiMessage.intent,
-        quick_replies: aiMessage.quickReplies,
-      })
 
       // Update session title from first user message
       if (messages.length <= 1) {
@@ -318,13 +433,13 @@ export default function ChatInterface() {
         <div className="relative px-5 py-4 flex items-center gap-3">
           <div className="relative">
             <div className="w-11 h-11 rounded-2xl overflow-hidden ring-2 ring-white/15 shadow-lg">
-              <Image src="/icon.png" alt="FarmFlow AI" width={44} height={44} className="object-cover" />
+              <Image src="/icon.png" alt="FarmClerk AI" width={44} height={44} className="object-cover" />
             </div>
             {/* Online indicator */}
             <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-[#5FD4A0] border-2 border-[#1B6B4A]" />
           </div>
           <div className="flex-1 min-w-0">
-            <h1 className="text-[15px] font-bold text-white">FarmFlow AI</h1>
+            <h1 className="text-[15px] font-bold text-white">FarmClerk AI</h1>
             <p className="text-[11px] font-semibold text-white/50">
               {isLoading ? (
                 <span className="flex items-center gap-1.5">

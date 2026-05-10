@@ -1,4 +1,4 @@
--- FarmFlow AI Database Schema
+-- FarmClerk AI Database Schema
 -- Run this in Supabase SQL Editor
 
 -- Enable UUID extension
@@ -17,6 +17,7 @@ CREATE TABLE users (
 CREATE TABLE animals (
   id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
   tag_number TEXT UNIQUE NOT NULL,
+  name TEXT,
   type TEXT NOT NULL, -- cow, goat, chicken, etc.
   status TEXT DEFAULT 'active', -- active, sold, deceased
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()

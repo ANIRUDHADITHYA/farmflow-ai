@@ -1,6 +1,6 @@
 {
-  "name": "FarmFlow AI",
-  "short_name": "FarmFlow",
+  "name": "FarmClerk AI",
+  "short_name": "FarmClerk",
   "description": "AI-powered farm management platform",
   "start_url": "/",
   "display": "standalone",

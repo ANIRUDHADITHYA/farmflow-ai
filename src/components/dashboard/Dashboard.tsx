@@ -112,7 +112,7 @@ export default function Dashboard() {
             <span className="text-sm font-semibold text-[#4A6B5D]">{greeting.text}</span>
           </div>
           <h1 className="text-[28px] font-extrabold text-[#0F2419] tracking-tight leading-tight">
-            Your Farm Overview
+            Huxley&apos;s Farm
           </h1>
         </motion.div>
 
@@ -376,10 +376,10 @@ export default function Dashboard() {
               <div className="relative w-24 h-24 rounded-3xl overflow-hidden shadow-lg"
                 style={{ boxShadow: '0 8px 32px rgba(27,107,74,0.15)' }}
               >
-                <Image src="/icon.png" alt="FarmFlow AI" width={96} height={96} className="object-cover" />
+                <Image src="/icon.png" alt="FarmClerk AI" width={96} height={96} className="object-cover" />
               </div>
             </div>
-            <h3 className="text-xl font-extrabold text-[#0F2419] mb-2">Welcome to FarmFlow!</h3>
+            <h3 className="text-xl font-extrabold text-[#0F2419] mb-2">Welcome to FarmClerk!</h3>
             <p className="text-sm text-[#4A6B5D] max-w-[260px] mx-auto leading-relaxed">
               Start by chatting with the AI assistant to log treatments, track stock, and manage your farm.
             </p>

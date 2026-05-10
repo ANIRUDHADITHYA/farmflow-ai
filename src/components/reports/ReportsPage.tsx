@@ -154,7 +154,7 @@ export default function ReportsPage() {
                 </div>
                 <h3 className="text-lg font-extrabold text-[#0F2419] mb-1">No Activity Yet</h3>
                 <p className="text-sm text-[#4A6B5D] font-medium">
-                  Activities appear here as you use FarmFlow AI
+                  Activities appear here as you use FarmClerk AI
                 </p>
               </motion.div>
             ) : (
@@ -223,7 +223,7 @@ export default function ReportsPage() {
                 </div>
                 <h3 className="text-lg font-extrabold text-[#0F2419] mb-1">No Reminders</h3>
                 <p className="text-sm text-[#4A6B5D] font-medium">
-                  Ask FarmFlow AI to set reminders for you
+                  Ask FarmClerk AI to set reminders for you
                 </p>
               </motion.div>
             ) : (

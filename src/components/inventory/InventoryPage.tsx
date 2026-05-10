@@ -221,7 +221,7 @@ export default function InventoryPage() {
                 {search ? 'No Results' : 'No Stock Items'}
               </h3>
               <p className="text-sm text-[#4A6B5D] font-medium">
-                {search ? 'Try a different search' : 'Add items or let FarmFlow AI track them'}
+                {search ? 'Try a different search' : 'Add items or let FarmClerk AI track them'}
               </p>
             </motion.div>
           ) : (

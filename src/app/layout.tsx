@@ -11,7 +11,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "FarmFlow AI — Smart Farm Management",
+  title: "FarmClerk AI — Smart Farm Management",
   description:
     "AI-powered farm management platform. Track treatments, inventory, invoices, and more with a conversational assistant.",
   manifest: "/manifest.json",
@@ -22,7 +22,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "FarmFlow AI",
+    title: "FarmClerk AI",
   },
 };
 

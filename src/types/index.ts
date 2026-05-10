@@ -9,6 +9,7 @@ export interface User {
 export interface Animal {
   id: string;
   tag_number: string;
+  name?: string;
   type: string;
   status: 'active' | 'sold' | 'deceased';
   created_at: string;
@@ -92,6 +93,16 @@ export interface AIResponse {
   data: Record<string, unknown>;
   follow_up_questions?: string[];
   message?: string;
+  needs_confirmation?: boolean;
+  confirmation_summary?: string;
+  pending_fields?: string[];
+  confirmed?: boolean;
+}
+
+export interface FarmContext {
+  animals: Array<{ tag_number: string; type: string; status: string }>;
+  inventory: Array<{ item_name: string; quantity: number; unit: string }>;
+  suppliers: string[];
 }
 
 export type TabType = 'home' | 'chat' | 'animals' | 'inventory' | 'reports';

@@ -108,7 +108,7 @@ export default function SplashScreen({ onFinish }: { onFinish: () => void }) {
         >
           <Image
             src="/icon.png"
-            alt="FarmFlow AI"
+            alt="FarmClerk AI"
             fill
             className="object-cover"
             priority
@@ -129,15 +129,18 @@ export default function SplashScreen({ onFinish }: { onFinish: () => void }) {
         <h1 className="text-4xl sm:text-5xl font-extrabold text-white tracking-tight">
           Farm<span className="text-transparent bg-clip-text" style={{
             backgroundImage: 'linear-gradient(135deg, #5FD4A0 0%, #7BC4A5 50%, #E8A838 100%)'
-          }}>Flow</span>
+          }}>Clerk</span>
         </h1>
         <div className="flex items-center justify-center gap-2 mt-3">
           <div className="h-px w-8 bg-gradient-to-r from-transparent to-white/20" />
           <p className="text-xs text-white/40 font-semibold tracking-[0.25em] uppercase">
-            Smart Farm Management
+            Huxley&apos;s Farm
           </p>
           <div className="h-px w-8 bg-gradient-to-l from-transparent to-white/20" />
         </div>
+        <p className="mt-3 text-sm text-white/30 italic tracking-wide">
+          From muddy boots to tidy books.
+        </p>
       </div>
 
       {/* Loading bar */}

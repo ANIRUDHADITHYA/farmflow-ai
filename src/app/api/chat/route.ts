@@ -2,10 +2,11 @@ import { NextRequest, NextResponse } from 'next/server'
 import { processMessage } from '@/services/ai'
 import { supabase } from '@/lib/supabase'
 import { AIResponse } from '@/types'
+import { getFarmContext } from '@/services/database'
 
 export async function POST(request: NextRequest) {
   try {
-    const { message, attachments, history } = await request.json()
+    const { message, attachments, history, confirmed, confirmedData } = await request.json()
 
     if (!message && (!attachments || attachments.length === 0)) {
       return NextResponse.json({
@@ -15,21 +16,38 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // Process with AI (pass conversation history for context)
-    const aiResponse: AIResponse = await processMessage(message, attachments, history)
+    // Load farm context for validation
+    const farmContext = await getFarmContext()
+
+    // If user is confirming a pending action, execute the DB write
+    if (confirmed && confirmedData) {
+      const result = await handleConfirmedAction(confirmedData)
+      return NextResponse.json(result)
+    }
+
+    // Process with AI (pass conversation history + farm context)
+    const aiResponse: AIResponse = await processMessage(message, attachments, history, farmContext)
 
     // Handle general/greeting intent — no DB ops needed
     if (aiResponse.intent === 'general') {
       return NextResponse.json(aiResponse)
     }
 
-    // Perform deterministic operations based on intent
-    const result = await handleIntent(aiResponse)
+    // If there are pending (missing) fields, do NOT save — ask user for more info
+    if (aiResponse.pending_fields && aiResponse.pending_fields.length > 0) {
+      return NextResponse.json({
+        ...aiResponse,
+        needs_confirmation: false,
+      })
+    }
 
-    return NextResponse.json({
-      ...aiResponse,
-      ...result,
-    })
+    // If confirmation is needed, return the data WITHOUT saving
+    if (aiResponse.needs_confirmation) {
+      return NextResponse.json(aiResponse)
+    }
+
+    // Should not reach here for actionable intents — but just in case, return without saving
+    return NextResponse.json(aiResponse)
   } catch (error) {
     console.error('Chat API error:', error)
     return NextResponse.json({
@@ -40,37 +58,58 @@ export async function POST(request: NextRequest) {
   }
 }
 
-async function handleIntent(response: AIResponse): Promise<Partial<AIResponse>> {
-  const { intent, data } = response
-  let extraMessage = ''
+async function handleConfirmedAction(confirmedData: { intent: string; data: Record<string, unknown> }): Promise<AIResponse> {
+  const { intent, data } = confirmedData
+  let successMessage = ''
 
   try {
     switch (intent) {
       case 'treatment':
-        extraMessage = await handleTreatment(data)
+        successMessage = await handleTreatment(data)
+        break
+      case 'animal_registration':
+        successMessage = await handleAnimalRegistration(data)
         break
       case 'inventory':
-        extraMessage = await handleInventory(data)
+        successMessage = await handleInventory(data)
         break
       case 'invoice':
-        extraMessage = await handleInvoice(data)
+        successMessage = await handleInvoice(data)
         break
       case 'reminder':
-        extraMessage = await handleReminder(data)
+        successMessage = await handleReminder(data)
         break
     }
 
-    // Create ledger entry
+    // Create ledger entry only after confirmed save
     await createLedgerEntry(intent, buildLedgerDescription(intent, data), data)
-  } catch (error) {
-    console.error(`Error handling ${intent}:`, error)
-  }
 
-  return extraMessage ? { message: response.message + ' ' + extraMessage } : {}
+    return {
+      intent,
+      data,
+      confirmed: true,
+      message: successMessage || `✅ ${intent.charAt(0).toUpperCase() + intent.slice(1)} saved successfully!`,
+      follow_up_questions: ['Log another', 'Check records'],
+    }
+  } catch (error) {
+    console.error(`Error handling confirmed ${intent}:`, error)
+    return {
+      intent: 'error',
+      data,
+      message: `Failed to save ${intent}. Please try again.`,
+    }
+  }
 }
 
 function buildLedgerDescription(intent: string, data: Record<string, unknown>): string {
   switch (intent) {
+    case 'animal_registration': {
+      const animals = data.animals as Array<{tag_number: string; name?: string}> | undefined
+      const count = animals?.length || data.count || 1
+      const type = data.type || 'animal'
+      const cost = data.purchase_cost ? ` for $${data.purchase_cost}` : ''
+      return `Registered ${count} ${type}(s)${cost}`
+    }
     case 'treatment': {
       const tag = data.tag_number || data.animal_id || 'unknown'
       const med = data.medicine || 'unknown medicine'
@@ -102,85 +141,137 @@ async function handleTreatment(data: Record<string, unknown>): Promise<string> {
   const withdrawalHours = data.withdrawal_hours as number | undefined
   const batchNumber = data.batch_number as string | undefined
 
-  if (!tagNumber && !withdrawalHours && !batchNumber) {
-    return '' // Partial data with follow-ups — don't write yet
+  // Strict validation — both required fields must be present
+  if (!tagNumber || !medicine || medicine === 'unknown') {
+    return 'Missing required treatment data.'
   }
 
   let animalUuid: string | undefined
 
-  if (tagNumber) {
-    // Look up or create animal
-    const { data: animal } = await supabase
+  // Look up or create animal
+  const { data: animal } = await supabase
+    .from('animals')
+    .select('id')
+    .eq('tag_number', tagNumber)
+    .single()
+
+  if (animal) {
+    animalUuid = animal.id
+  } else {
+    const animalType = (data.animal_type as string) || 'cow'
+    const { data: newAnimal, error } = await supabase
       .from('animals')
+      .insert({ tag_number: tagNumber, type: animalType })
       .select('id')
-      .eq('tag_number', tagNumber)
       .single()
-
-    if (animal) {
-      animalUuid = animal.id
-    } else {
-      const animalType = (data.animal_type as string) || 'cow'
-      const { data: newAnimal, error } = await supabase
-        .from('animals')
-        .insert({ tag_number: tagNumber, type: animalType })
-        .select('id')
-        .single()
-      if (error) throw error
-      animalUuid = newAnimal.id
-    }
-  }
-
-  // Only insert if we have enough data
-  if (animalUuid && medicine) {
-    const { error } = await supabase
-      .from('treatments')
-      .insert({
-        animal_id: animalUuid,
-        medicine,
-        dosage: dosage || null,
-        withdrawal_hours: withdrawalHours || null,
-        batch_number: batchNumber || null,
-      })
     if (error) throw error
+    animalUuid = newAnimal.id
+  }
 
-    // Reduce medicine inventory if it exists
-    const { data: inv } = await supabase
+  const { error } = await supabase
+    .from('treatments')
+    .insert({
+      animal_id: animalUuid,
+      medicine,
+      dosage: dosage || null,
+      withdrawal_hours: withdrawalHours || null,
+      batch_number: batchNumber || null,
+    })
+  if (error) throw error
+
+  // Reduce medicine inventory if it exists
+  const { data: inv } = await supabase
+    .from('inventory')
+    .select('quantity')
+    .eq('item_name', medicine)
+    .single()
+
+  if (inv) {
+    await supabase
       .from('inventory')
-      .select('quantity')
+      .update({ quantity: Math.max(0, inv.quantity - 1), updated_at: new Date().toISOString() })
       .eq('item_name', medicine)
-      .single()
+  }
 
-    if (inv) {
-      await supabase
-        .from('inventory')
-        .update({ quantity: Math.max(0, inv.quantity - 1), updated_at: new Date().toISOString() })
-        .eq('item_name', medicine)
+  // Create withdrawal reminder
+  if (withdrawalHours && withdrawalHours > 0) {
+    const dueDate = new Date()
+    dueDate.setHours(dueDate.getHours() + withdrawalHours)
+    await supabase.from('reminders').insert({
+      title: `Withdrawal period ends: ${medicine} on animal #${tagNumber}`,
+      due_date: dueDate.toISOString(),
+    })
+  }
+
+  return `✅ Treatment recorded: ${medicine} for animal #${tagNumber}`
+}
+
+async function handleAnimalRegistration(data: Record<string, unknown>): Promise<string> {
+  const type = data.type as string
+  const animals = data.animals as Array<{tag_number: string; name?: string}>
+  const purchaseCost = data.purchase_cost as number | undefined
+  const supplier = data.supplier as string | undefined
+
+  if (!type || !animals || animals.length === 0) {
+    return 'Missing required animal registration data.'
+  }
+
+  const registered: string[] = []
+  for (const animal of animals) {
+    const insertData: Record<string, unknown> = {
+      tag_number: animal.tag_number,
+      type,
+      status: 'active',
     }
+    if (animal.name) insertData.name = animal.name
 
-    // Create withdrawal reminder
-    if (withdrawalHours && withdrawalHours > 0) {
-      const dueDate = new Date()
-      dueDate.setHours(dueDate.getHours() + withdrawalHours)
-      await supabase.from('reminders').insert({
-        title: `Withdrawal period ends: ${medicine} on animal #${tagNumber}`,
-        due_date: dueDate.toISOString(),
-      })
+    const { error } = await supabase.from('animals').insert(insertData)
+    if (error) {
+      if (error.code === '23505') {
+        registered.push(`#${animal.tag_number} (already exists)`)
+      } else {
+        throw error
+      }
+    } else {
+      registered.push(animal.name ? `${animal.name} (#${animal.tag_number})` : `#${animal.tag_number}`)
     }
   }
 
-  return ''
+  // Record purchase expense if provided
+  if (purchaseCost && purchaseCost > 0) {
+    await supabase.from('invoices').insert({
+      supplier: supplier || 'Not specified',
+      amount: Number(purchaseCost),
+      extracted_json: { type: 'animal_purchase', animal_type: type, animals, count: animals.length },
+    })
+
+    // Ledger entry for the expense
+    await supabase.from('ledger_entries').insert({
+      type: 'invoice',
+      description: `Purchased ${animals.length} ${type}(s) from ${supplier || 'unknown'}: $${purchaseCost}`,
+      metadata_json: { animal_type: type, purchase_cost: purchaseCost, supplier },
+    })
+  }
+
+  const summary = registered.join(', ')
+  const costNote = purchaseCost ? ` | Expense: $${purchaseCost}${supplier ? ` from ${supplier}` : ''}` : ''
+  return `✅ Registered ${animals.length} ${type}(s): ${summary}${costNote}`
 }
 
 async function handleInventory(data: Record<string, unknown>): Promise<string> {
   const itemName = data.item_name as string | undefined
   const quantity = data.quantity as number | undefined
+  const purchaseCost = data.purchase_cost as number | undefined
+  const supplier = data.supplier as string | undefined
 
-  if (!itemName) return ''
+  if (!itemName || quantity === undefined || quantity === null) {
+    return 'Missing required inventory data.'
+  }
 
   const { error } = await supabase.from('inventory').upsert(
     {
       item_name: itemName,
-      quantity: quantity ?? 0,
+      quantity,
       unit: (data.unit as string) || 'units',
       updated_at: new Date().toISOString(),
     },
@@ -189,16 +280,38 @@ async function handleInventory(data: Record<string, unknown>): Promise<string> {
 
   if (error) throw error
 
-  return ''
+  // Record purchase expense if cost was provided
+  if (purchaseCost && purchaseCost > 0) {
+    await supabase.from('invoices').insert({
+      supplier: supplier || 'Not specified',
+      amount: Number(purchaseCost),
+      extracted_json: { type: 'inventory_purchase', item_name: itemName, quantity },
+    })
+
+    await supabase.from('ledger_entries').insert({
+      type: 'invoice',
+      description: `Purchased ${quantity} ${(data.unit as string) || 'units'} of ${itemName} from ${supplier || 'unknown'}: $${purchaseCost}`,
+      metadata_json: { item_name: itemName, quantity, purchase_cost: purchaseCost, supplier },
+    })
+
+    const costNote = supplier ? ` | $${purchaseCost} from ${supplier}` : ` | $${purchaseCost}`
+    return `✅ Inventory updated: ${itemName} → ${quantity}${costNote}`
+  }
+
+  return `✅ Inventory updated: ${itemName} → ${quantity}`
 }
 
 async function handleInvoice(data: Record<string, unknown>): Promise<string> {
   const supplier = data.supplier as string | undefined
   const amount = data.amount as number | undefined
 
+  if (!supplier || supplier === 'Unknown' || supplier === 'unknown' || !amount) {
+    return 'Missing required invoice data.'
+  }
+
   await supabase.from('invoices').insert({
-    supplier: supplier || 'Unknown',
-    amount: amount ? Number(amount) : 0,
+    supplier,
+    amount: Number(amount),
     image_url: (data.image_url as string) || null,
     extracted_json: data,
   })
@@ -220,39 +333,34 @@ async function handleInvoice(data: Record<string, unknown>): Promise<string> {
         { onConflict: 'item_name' }
       )
     }
-    return 'Inventory has been updated with the new items.'
+    return `✅ Invoice recorded: $${amount} from ${supplier}. Inventory updated with new items.`
   }
 
-  return ''
+  return `✅ Invoice recorded: $${amount} from ${supplier}`
 }
 
 async function handleReminder(data: Record<string, unknown>): Promise<string> {
   const title = data.title as string | undefined
   let dueDateStr = data.due_date as string | undefined
 
-  if (!title) return ''
+  if (!title || !dueDateStr) return 'Missing required reminder data.'
 
   // Parse relative dates
   let dueDate: Date
-  if (!dueDateStr) {
-    dueDate = new Date()
-    dueDate.setDate(dueDate.getDate() + 1) // default: tomorrow
+  const lower = dueDateStr.toLowerCase()
+  dueDate = new Date()
+  if (lower.includes('tomorrow')) {
+    dueDate.setDate(dueDate.getDate() + 1)
+    if (lower.includes('morning')) dueDate.setHours(8, 0, 0, 0)
+    else if (lower.includes('afternoon')) dueDate.setHours(14, 0, 0, 0)
+    else if (lower.includes('evening')) dueDate.setHours(18, 0, 0, 0)
+  } else if (lower.includes('next week')) {
+    dueDate.setDate(dueDate.getDate() + 7)
   } else {
-    const lower = dueDateStr.toLowerCase()
-    dueDate = new Date()
-    if (lower.includes('tomorrow')) {
-      dueDate.setDate(dueDate.getDate() + 1)
-      if (lower.includes('morning')) dueDate.setHours(8, 0, 0, 0)
-      else if (lower.includes('afternoon')) dueDate.setHours(14, 0, 0, 0)
-      else if (lower.includes('evening')) dueDate.setHours(18, 0, 0, 0)
-    } else if (lower.includes('next week')) {
-      dueDate.setDate(dueDate.getDate() + 7)
-    } else {
-      // Try direct parsing
-      const parsed = new Date(dueDateStr)
-      if (!isNaN(parsed.getTime())) dueDate = parsed
-      else dueDate.setDate(dueDate.getDate() + 1)
-    }
+    // Try direct parsing
+    const parsed = new Date(dueDateStr)
+    if (!isNaN(parsed.getTime())) dueDate = parsed
+    else dueDate.setDate(dueDate.getDate() + 1)
   }
 
   await supabase.from('reminders').insert({
@@ -260,7 +368,7 @@ async function handleReminder(data: Record<string, unknown>): Promise<string> {
     due_date: dueDate.toISOString(),
   })
 
-  return ''
+  return `✅ Reminder set: "${title}"`
 }
 
 async function createLedgerEntry(type: string, description: string, metadata: Record<string, unknown>) {

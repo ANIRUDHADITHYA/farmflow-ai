@@ -1,5 +1,27 @@
 import { supabase } from '@/lib/supabase'
-import type { Animal, Treatment, InventoryItem, Invoice, Reminder, LedgerEntry, ChatSession, ChatMessageRow } from '@/types'
+import type { Animal, Treatment, InventoryItem, Invoice, Reminder, LedgerEntry, ChatSession, ChatMessageRow, FarmContext } from '@/types'
+
+// ── Farm Context (for chat validation) ───────────────────────────────
+export async function getFarmContext(): Promise<FarmContext> {
+  const [animalsRes, inventoryRes, invoicesRes] = await Promise.all([
+    supabase.from('animals').select('tag_number, type, status').order('created_at', { ascending: false }),
+    supabase.from('inventory').select('item_name, quantity, unit').order('item_name', { ascending: true }),
+    supabase.from('invoices').select('supplier').order('created_at', { ascending: false }).limit(50),
+  ])
+
+  const animals = Array.isArray(animalsRes.data) ? animalsRes.data : []
+  const inventory = Array.isArray(inventoryRes.data) ? inventoryRes.data : []
+  const invoiceRows = Array.isArray(invoicesRes.data) ? invoicesRes.data : []
+
+  // Extract unique supplier names
+  const suppliers = [...new Set(
+    invoiceRows
+      .map(i => i.supplier as string)
+      .filter(s => s && s !== 'Unknown' && s !== 'unknown')
+  )]
+
+  return { animals, inventory, suppliers }
+}
 
 // ── Animals ──────────────────────────────────────────────────────────
 export async function getAnimals() {
